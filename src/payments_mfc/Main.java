@@ -13,6 +13,7 @@ public class Main extends Application {
         Parent root = FXMLLoader.load(getClass().getResource("view/app.fxml"));
         primaryStage.setTitle("Обработка платежей");
         primaryStage.setScene(new Scene(root, 1031, 750));
+        ((Stage) primaryStage.getScene().getWindow()).setMaximized(true);
         primaryStage.show();
     }
 

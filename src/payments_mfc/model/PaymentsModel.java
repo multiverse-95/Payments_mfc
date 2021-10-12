@@ -15,8 +15,9 @@ public class PaymentsModel {
     private String tariff_270_sum;
     private String total_sum;
 
-    public PaymentsModel(int number_list, String name_mfc, String commentary, String commentary_clarification, String tarriff, String tariff_70_sum,
-                         String tariff_110_sum, String tariff_130_sum, String tariff_220_sum, String tariff_260_sum, String tariff_310_sum, String tariff_270_sum, String total_sum) {
+    public PaymentsModel(int number_list, String name_mfc, String commentary, String commentary_clarification, String tarriff,
+                         String tariff_70_sum, String tariff_110_sum, String tariff_130_sum, String tariff_220_sum, String tariff_260_sum,
+                         String tariff_310_sum, String tariff_270_sum, String total_sum) {
         this.number_list = number_list;
         this.name_mfc = name_mfc;
         this.commentary = commentary;

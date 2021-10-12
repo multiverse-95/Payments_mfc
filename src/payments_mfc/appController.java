@@ -57,12 +57,6 @@ public class appController {
     private URL location;
 
     @FXML
-    private MenuBar app_menuBar;
-
-    @FXML
-    private MenuItem menu_item_change_user;
-
-    @FXML
     private StackPane root_report;
 
     @FXML

@@ -9,6 +9,8 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
+import javafx.concurrent.WorkerStateEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Alert;
@@ -45,7 +47,6 @@ public class PaymentsController {
         //private final LocalDate datePeriod; // Дата начала в юникс
         private final File file;
 
-
         public ReportPayments(File file) {
             this.file = file;
         }
@@ -58,6 +59,25 @@ public class PaymentsController {
             return reportListFinal; // Возвращаем итоговый отчёт
         }
     }
+
+    // Класс для потока скачивания отчёта
+    public static class DownloadTaskExcel extends Task<ArrayList<String>> {
+        private final ArrayList<PaymentsModel> dataReportList;
+        private File file;
+
+        public DownloadTaskExcel(ArrayList<PaymentsModel> dataReportList, File file) {
+            this.dataReportList = dataReportList;
+            this.file=file;
+
+        }
+        @Override
+        protected ArrayList<String> call() throws Exception {
+            // Получение файла Excel
+            ArrayList<String> pathFileAndDir=SaveFileExcel(dataReportList, file);
+            return pathFileAndDir; // Возвращаем путь к файлу
+        }
+    }
+
     public static ArrayList<PaymentsModel> GetReportAll(File file) throws IOException {
 
         List<PaymentsModel> paymentsList = new ArrayList<PaymentsModel>();
@@ -76,6 +96,7 @@ public class PaymentsController {
             XSSFSheet sheet = workbook.getSheetAt(0);
             List<PaymentsModelInput> paymentsListInputTarrif= new ArrayList<PaymentsModelInput>();
             List<PaymentsModelInput> paymentsListInputNameMFC= new ArrayList<PaymentsModelInput>();
+            List<PaymentsModelInput> paymentsListInputAddressMFC= new ArrayList<PaymentsModelInput>();
             List<PaymentsModelInput> paymentsListInputFioApplicant= new ArrayList<PaymentsModelInput>();
             List<PaymentsModelInput> paymentsListInputNameMFCAndTarriff= new ArrayList<PaymentsModelInput>();
             for (int cell_num=1; cell_num<=4; cell_num++){
@@ -108,7 +129,7 @@ public class PaymentsController {
                         case NUMERIC:
                             //System.out.print(cell.getNumericCellValue());
                             if (cell_num==1){
-                                paymentsListInputTarrif.add(new PaymentsModelInput(cell.getNumericCellValue(),"",""));
+                                paymentsListInputTarrif.add(new PaymentsModelInput(cell.getNumericCellValue(),"","",""));
                             }
 
                             break;
@@ -116,14 +137,16 @@ public class PaymentsController {
                             //System.out.print(cell.getStringCellValue());
                             //listFromExport.add(cell.getStringCellValue());
                             if (cell_num==1){
-                                paymentsListInputTarrif.add(new PaymentsModelInput(0,"",""));
+                                paymentsListInputTarrif.add(new PaymentsModelInput(0,"","",""));
                             }
                             if (cell_num==2){
-                                paymentsListInputNameMFC.add(new PaymentsModelInput(0,cell.getStringCellValue(),""));
+                                paymentsListInputNameMFC.add(new PaymentsModelInput(0,cell.getStringCellValue(),"",""));
                             }
-
+                            if (cell_num==3){
+                                paymentsListInputAddressMFC.add(new PaymentsModelInput(0,"",cell.getStringCellValue(),""));
+                            }
                             if (cell_num==4){
-                                paymentsListInputFioApplicant.add(new PaymentsModelInput(0,"",cell.getStringCellValue()));
+                                paymentsListInputFioApplicant.add(new PaymentsModelInput(0,"","",cell.getStringCellValue()));
                             }
 
                             //System.out.print("\n");
@@ -135,7 +158,7 @@ public class PaymentsController {
                     }
                 }
             }
-            System.out.println("Size mfc "+paymentsListInputNameMFC.size()+" Size tarrif "+ paymentsListInputTarrif.size());
+            System.out.println("Size mfc "+paymentsListInputNameMFC.size()+" Size tarrif "+ paymentsListInputTarrif.size() +" Size address "+ paymentsListInputAddressMFC.size());
             /*for (int i=0; i<paymentsListInputNameMFC.size(); i++){
                 int numb=i+1;
                 System.out.println("numb: "+numb+" "+ paymentsListInputTarrif.get(i).getName_mfc() +" "+ paymentsListInputTarrif.get(i).getTarriff());
@@ -143,8 +166,31 @@ public class PaymentsController {
             }*/
 
             for (int i=0; i<paymentsListInputTarrif.size(); i++){
-                paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),paymentsListInputNameMFC.get(i).getName_mfc(),
-                        paymentsListInputFioApplicant.get(i).getFio_applicant()));
+                if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("Курако")) {
+                    //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Новокузнецкий р-н",""));
+                    paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Новокузнецкий р-н",
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant()));
+                }
+                else if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("Григорченкова")) {
+                    //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Ленинск-кузнецкий р-н",""));
+                    paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Ленинск-кузнецкий р-н",
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant()));
+                }
+                else if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("г Прокопьевск, пр-кт Гагарина")) {
+                    //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Прокопьевский р-н",""));
+                    paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Прокопьевский р-н",
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant()));
+                }
+                else if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("г Юрга, ул Машиностроителей")) {
+                    //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Юргинский р-н",""));
+                    paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Юргинский р-н",
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant()));
+                }
+                else {
+                    paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),paymentsListInputNameMFC.get(i).getName_mfc(),
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant()));
+                }
+
             }
 
             /*for (int i=0; i< paymentsListInputNameMFCAndTarriff.size(); i++){
@@ -261,6 +307,7 @@ public class PaymentsController {
                         "", tariff_70_sum_str, tariff_110_sum_str, tariff_130_sum_str, tariff_220_sum_str,
                         tariff_260_sum_str, tariff_310_sum_str, tariff_270_sum_str, Sum_tariff_mfc_str));
                 System.out.println("SUM MFC: "+Sum_tariff_mfc);
+
             }
 
             for (PaymentsModel paymentsModel : paymentsList) {
@@ -323,50 +370,62 @@ public class PaymentsController {
                     // Окно, которое уведомляет о загрузке файла
                     ButtonType ok_but = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE); // Создание кнопки "Открыть отчёт"
                     ButtonType cancel_but = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE); // Создание кнопки "Открыть папку с отчётом"
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Test", ok_but, cancel_but);
+                    Alert alert =new Alert(Alert.AlertType.INFORMATION , "Test", ok_but, cancel_but);
                     alert.setTitle("Загрузка отчёта...");
                     alert.setHeaderText("Идёт загрузка отчёта, подождите...");
                     alert.setContentText("После загрузки появится уведомление!");
                     alert.show();
                     // Скрываем кнопки в окне, чтобы пользователь случайно не нажал их
-                    Button okButton = (Button) alert.getDialogPane().lookupButton(ok_but);
-                    Button cancelButton = (Button) alert.getDialogPane().lookupButton(cancel_but);
+                    Button okButton =( Button ) alert.getDialogPane().lookupButton( ok_but );
+                    Button cancelButton = ( Button ) alert.getDialogPane().lookupButton( cancel_but );
                     okButton.setVisible(false);
                     cancelButton.setVisible(false);
 
+                    Task DownloadTaskExcel =  new DownloadTaskExcel (listPayment, file);
 
-                    cancelButton.fire(); // Закрываем окно с загрузкой
-                    // Получение директорий, вызов функции скачивания отчёта
-                    ArrayList<String> pathFileAndDir=SaveFileExcel(listPayment, file);
-                    // Получаем путь для файла
-                    String pathToFile=pathFileAndDir.get(0);
-                    String absolutePathToFile=pathFileAndDir.get(1);
+                    //  После выполнения потока
+                    DownloadTaskExcel.setOnSucceeded(new EventHandler<WorkerStateEvent>() {
+                        @Override
+                        public void handle(WorkerStateEvent event) {
 
-                    System.out.println(pathToFile + " " + absolutePathToFile);
-                    // Отображаем окно с выбором: Открыть отчёт или открыть папку с отчётом
-                    ButtonType openReport = new ButtonType("Открыть отчёт", ButtonBar.ButtonData.OK_DONE); // Создание кнопки "Открыть отчёт"
-                    ButtonType openDir = new ButtonType("Открыть папку с отчётом", ButtonBar.ButtonData.CANCEL_CLOSE); // Создание кнопки "Открыть папку с отчётом"
-                    Alert alert2 = new Alert(Alert.AlertType.INFORMATION, "Test", openReport, openDir);
-                    alert2.setTitle("Загрузка завершена!"); // Название предупреждения
-                    alert2.setHeaderText("Отчёт загружен!"); // Текст предупреждения
-                    alert2.setContentText("Отчёт доступен в папке: " + pathToFile);
-                    // Вызов подтверждения элемента
-                    alert2.showAndWait().ifPresent(rs -> {
-                        if (rs == openReport) { // Если выбрали открыть отчёт
-                            try {
-                                Desktop.getDesktop().open(new File(absolutePathToFile));
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        } else if (rs == openDir) { // Если выбрали открыт папку
-                            try {
-                                Desktop.getDesktop().open(new File(pathToFile));
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                            cancelButton.fire(); // Закрываем окно с загрузкой
+                            // Получение директорий, вызов функции скачивания отчёта
+                            ArrayList<String> pathFileAndDir= (ArrayList<String>) DownloadTaskExcel.getValue();
+                            // Получаем путь для файла
+                            String pathToFile=pathFileAndDir.get(0);
+                            String absolutePathToFile=pathFileAndDir.get(1);
+
+                            System.out.println(pathToFile +" "+absolutePathToFile);
+                            // Отображаем окно с выбором: Открыть отчёт или открыть папку с отчётом
+                            ButtonType openReport = new ButtonType("Открыть отчёт", ButtonBar.ButtonData.OK_DONE); // Создание кнопки "Открыть отчёт"
+                            ButtonType openDir = new ButtonType("Открыть папку с отчётом", ButtonBar.ButtonData.CANCEL_CLOSE); // Создание кнопки "Открыть папку с отчётом"
+                            Alert alert =new Alert(Alert.AlertType.INFORMATION , "Test", openReport, openDir);
+                            alert.setTitle("Загрузка завершена!"); // Название предупреждения
+                            alert.setHeaderText("Отчёт загружен!"); // Текст предупреждения
+                            alert.setContentText("Отчёт доступен в папке: "+pathToFile);
+                            // Вызов подтверждения элемента
+                            alert.showAndWait().ifPresent(rs -> {
+                                if (rs == openReport){ // Если выбрали открыть отчёт
+                                    try {
+                                        Desktop.getDesktop().open(new File(absolutePathToFile));
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                } else if (rs==openDir){ // Если выбрали открыт папку
+                                    try {
+                                        Desktop.getDesktop().open(new File(pathToFile));
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            });
                         }
                     });
 
+                    // Запуск потока
+                    Thread DownloadThread = new Thread(DownloadTaskExcel);
+                    DownloadThread.setDaemon(true);
+                    DownloadThread.start();
                 }
             }
         }
@@ -378,6 +437,19 @@ public class PaymentsController {
         font.setBold(true);
         XSSFCellStyle style = workbook.createCellStyle();
         style.setFont(font);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+    // Функция для установки стилей Excel
+    private static XSSFCellStyle createStyleForCells(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
         return style;
     }
 
@@ -386,6 +458,10 @@ public class PaymentsController {
         font.setBold(true);
         XSSFCellStyle style = workbook.createCellStyle();
         style.setFont(font);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
         return style;
     }
 
@@ -401,6 +477,7 @@ public class PaymentsController {
         Row row;
         // Установка стилей
         XSSFCellStyle style = createStyleForTitleNew(workbook);
+        XSSFCellStyle styleCells = createStyleForCells(workbook);
         XSSFCellStyle styleTotalSum = createStyleForTotalSum(workbook);
         row = sheet.createRow(rownum);
 
@@ -453,9 +530,6 @@ public class PaymentsController {
         cell.setCellValue("ИТОГО");
         cell.setCellStyle(style);
 
-
-
-
         // Перебор по данным
         for (PaymentsModel reportModel : dataReportList) {
             //System.out.println(mfc_model.getIdMfc() +"\t" +mfc_model.getNameMfc());
@@ -465,44 +539,56 @@ public class PaymentsController {
             // Запись данных в отчёт
             cell = row.createCell(0, CellType.STRING);
             cell.setCellValue(reportModel.getNumber_list());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(1, CellType.STRING);
             cell.setCellValue(reportModel.getName_mfc());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(2, CellType.STRING);
             cell.setCellValue(reportModel.getCommentary());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(3, CellType.STRING);
             cell.setCellValue(reportModel.getCommentary_clarification());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(4, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_70_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(5, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_110_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(6, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_130_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(7, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_220_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(8, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_260_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(9, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_310_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(10, CellType.STRING);
             cell.setCellValue(reportModel.getTariff_270_sum());
+            cell.setCellStyle(styleCells);
 
             cell = row.createCell(11, CellType.STRING);
             cell.setCellValue(reportModel.getTotal_sum());
+            cell.setCellStyle(styleCells);
 
             if (rownum==dataReportList.size()){
                 // Запись данных в отчёт
                 cell = row.createCell(0, CellType.STRING);
-                cell.setCellValue(reportModel.getNumber_list());
+                cell.setCellValue("");
                 cell.setCellStyle(styleTotalSum);
 
                 cell = row.createCell(1, CellType.STRING);

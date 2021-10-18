@@ -17,8 +17,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.apache.poi.ss.usermodel.*;
@@ -27,33 +25,29 @@ import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import payments_mfc.appController;
-import payments_mfc.model.PaymentsModel;
-import payments_mfc.model.PaymentsModelInput;
-import payments_mfc.model.SettingsModel;
+import payments_mfc.model.*;
 
 import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class PaymentsController {
-
+public class PaymentsAllController {
 
     // Класс для потока получения отчёта
-    public static class ReportPayments extends Task<ArrayList<PaymentsModel>> {
+    public static class ReportPaymentsAll extends Task<ArrayList<PaymentsItogModel>> {
         //private final LocalDate datePeriod; // Дата начала в юникс
         private final File file;
 
-        public ReportPayments(File file) {
+        public ReportPaymentsAll(File file) {
             this.file = file;
         }
         @Override
-        protected ArrayList<PaymentsModel> call() throws Exception {
+        protected ArrayList<PaymentsItogModel> call() throws Exception {
             // получение одного общего отчёта
-            ArrayList<PaymentsModel> reportListFinal;
+            ArrayList<PaymentsItogModel> reportListFinal;
             reportListFinal=GetReportAll(file);
             // ArrayList<PaymentsModel> reportListFinal= GetReportAll(file);
             return reportListFinal; // Возвращаем итоговый отчёт
@@ -62,10 +56,10 @@ public class PaymentsController {
 
     // Класс для потока скачивания отчёта
     public static class DownloadTaskExcel extends Task<ArrayList<String>> {
-        private final ArrayList<PaymentsModel> dataReportList;
+        private final ArrayList<PaymentsItogModel> dataReportList;
         private File file;
 
-        public DownloadTaskExcel(ArrayList<PaymentsModel> dataReportList, File file) {
+        public DownloadTaskExcel(ArrayList<PaymentsItogModel> dataReportList, File file) {
             this.dataReportList = dataReportList;
             this.file=file;
 
@@ -78,9 +72,11 @@ public class PaymentsController {
         }
     }
 
-    public static ArrayList<PaymentsModel> GetReportAll(File file) throws IOException {
+    public static ArrayList<PaymentsItogModel> GetReportAll(File file) throws IOException {
 
         List<PaymentsModel> paymentsList = new ArrayList<PaymentsModel>();
+        ArrayList<PaymentsItogModel> itogPayments= new ArrayList<PaymentsItogModel>();
+        ArrayList<ServiceItogModel> itogService= new ArrayList<ServiceItogModel>();
         if (file != null) {
             //Open
             System.out.println("Процесс открытия файла");
@@ -98,33 +94,21 @@ public class PaymentsController {
             List<PaymentsModelInput> paymentsListInputNameMFC= new ArrayList<PaymentsModelInput>();
             List<PaymentsModelInput> paymentsListInputAddressMFC= new ArrayList<PaymentsModelInput>();
             List<PaymentsModelInput> paymentsListInputFioApplicant= new ArrayList<PaymentsModelInput>();
+            List<PaymentsModelInput> paymentsModelInputService = new ArrayList<PaymentsModelInput>();
             List<PaymentsModelInput> paymentsListInputNameMFCAndTarriff= new ArrayList<PaymentsModelInput>();
-            for (int cell_num=1; cell_num<=4; cell_num++){
+            for (int cell_num=1; cell_num<=6; cell_num++){
                 for (Row row : sheet) { // For each Row.
                     Cell cell = row.getCell(cell_num); // Get the Cell at the Index / Column you want.
                     CellType cellType = cell.getCellTypeEnum();
                     int number_of_list=1;
                     switch (cellType) {
                         case _NONE:
-                            //System.out.print("");
-                            //System.out.print("\t");
                             break;
                         case BOOLEAN:
-                            //System.out.print(cell.getBooleanCellValue());
-                            //System.out.print("\t");
                             break;
                         case BLANK:
-                            //System.out.print("");
-                            //System.out.print("\t");
                             break;
                         case FORMULA:
-                            // Formula
-                            //System.out.print(cell.getCellFormula());
-                            //System.out.print("\t");
-
-                            //FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-                            // Print out value evaluated by formula
-                            //System.out.print(evaluator.evaluate(cell).getNumberValue());
                             break;
                         case NUMERIC:
                             //System.out.print(cell.getNumericCellValue());
@@ -134,8 +118,6 @@ public class PaymentsController {
 
                             break;
                         case STRING:
-                            //System.out.print(cell.getStringCellValue());
-                            //listFromExport.add(cell.getStringCellValue());
                             if (cell_num==1){
                                 paymentsListInputTarrif.add(new PaymentsModelInput(0,"","","",""));
                             }
@@ -148,17 +130,17 @@ public class PaymentsController {
                             if (cell_num==4){
                                 paymentsListInputFioApplicant.add(new PaymentsModelInput(0,"","",cell.getStringCellValue(),""));
                             }
-
-                            //System.out.print("\n");
+                            if (cell_num==6){
+                                paymentsModelInputService.add(new PaymentsModelInput(0,"","","",cell.getStringCellValue()));
+                            }
                             break;
                         case ERROR:
-                            //System.out.print("!");
-                            //System.out.print("\t");
                             break;
                     }
                 }
             }
-            System.out.println("Size mfc "+paymentsListInputNameMFC.size()+" Size tarrif "+ paymentsListInputTarrif.size() +" Size address "+ paymentsListInputAddressMFC.size());
+            System.out.println("Size mfc "+paymentsListInputNameMFC.size()+" Size tarrif "+ paymentsListInputTarrif.size() +" Size address "+ paymentsListInputAddressMFC.size()+
+                    " Size service "+ paymentsModelInputService.size());
             /*for (int i=0; i<paymentsListInputNameMFC.size(); i++){
                 int numb=i+1;
                 System.out.println("numb: "+numb+" "+ paymentsListInputTarrif.get(i).getName_mfc() +" "+ paymentsListInputTarrif.get(i).getTarriff());
@@ -169,26 +151,26 @@ public class PaymentsController {
                 if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("Курако")) {
                     //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Новокузнецкий р-н",""));
                     paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Новокузнецкий р-н",
-                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),""));
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),paymentsModelInputService.get(i).getService_mfc()));
                 }
                 else if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("Григорченкова")) {
                     //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Ленинск-кузнецкий р-н",""));
                     paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Ленинск-кузнецкий р-н",
-                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),""));
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),paymentsModelInputService.get(i).getService_mfc()));
                 }
                 else if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("г Прокопьевск, пр-кт Гагарина")) {
                     //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Прокопьевский р-н",""));
                     paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Прокопьевский р-н",
-                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),""));
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),paymentsModelInputService.get(i).getService_mfc()));
                 }
                 else if (paymentsListInputAddressMFC.get(i).getAddress_mfc().contains("г Юрга, ул Машиностроителей")) {
                     //paymentsListInputNameMFC.add(new PaymentsModelInput(0,"Юргинский р-н",""));
                     paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),"Юргинский р-н",
-                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),""));
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),paymentsModelInputService.get(i).getService_mfc()));
                 }
                 else {
                     paymentsListInputNameMFCAndTarriff.add(new PaymentsModelInput(paymentsListInputTarrif.get(i).getTarriff(),paymentsListInputNameMFC.get(i).getName_mfc(),
-                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),""));
+                            "", paymentsListInputFioApplicant.get(i).getFio_applicant(),paymentsModelInputService.get(i).getService_mfc()));
                 }
 
             }
@@ -200,137 +182,138 @@ public class PaymentsController {
             paymentsListInputNameMFCAndTarriff.remove(0);
             /*for (int i=0; i< paymentsListInputNameMFCAndTarriff.size(); i++){
                 int numb=i+1;
-                System.out.println("numb: "+numb+" "+ paymentsListInputNameMFCAndTarriff.get(i).getTarriff() +" "+ paymentsListInputNameMFCAndTarriff.get(i).getName_mfc());
+                System.out.println("numb: "+numb+" "+ paymentsListInputNameMFCAndTarriff.get(i).getTarriff() +" "+ paymentsListInputNameMFCAndTarriff.get(i).getName_mfc()+
+                        " "+paymentsListInputNameMFCAndTarriff.get(i).getService_mfc());
             }*/
             List<String> mfcSwithDublicates=new ArrayList<>();
+            List<String> servicesWithDublicates=new ArrayList<>();
             List<String> mfcWithoutDublicates= new ArrayList<>();
-            for(int i =0; i<paymentsListInputNameMFCAndTarriff.size(); i++){
-                mfcSwithDublicates.add(paymentsListInputNameMFCAndTarriff.get(i).getName_mfc());
+            List<String> servicesWithoutDublicates= new ArrayList<>();
+
+            for (PaymentsModelInput modelInput : paymentsListInputNameMFCAndTarriff) {
+                mfcSwithDublicates.add(modelInput.getName_mfc());
+                servicesWithDublicates.add(modelInput.getService_mfc());
             }
 
             Set<String> setMfc = new HashSet<>(mfcSwithDublicates);
+            Set<String> setServices = new HashSet<>(servicesWithDublicates);
+
             mfcWithoutDublicates.addAll(setMfc);
-            System.out.println("WITH DUBLICATES");
+            servicesWithoutDublicates.addAll(setServices);
+
+            // Get duplicates
+            /*System.out.println("WITH DUBLICATES");
             for (int i=0; i< mfcSwithDublicates.size(); i++){
                 int numb=i+1;
-                System.out.println("numb "+numb+ " MFC "+mfcSwithDublicates.get(i));
+                //System.out.println("numb "+numb+ " MFC "+mfcSwithDublicates.get(i));
             }
-            System.out.println("WITHOUT DUBLICATES");
+            System.out.println("WITHOUT DUBLICATES MFCS");
             for (int i=0; i< mfcWithoutDublicates.size(); i++){
                 int numb=i+1;
-                System.out.println("numb "+numb+ " MFC "+mfcWithoutDublicates.get(i));
+                //System.out.println("numb "+numb+ " MFC "+mfcWithoutDublicates.get(i));
             }
 
-            int tariff_70_sum_allRegion=0;int tariff_110_sum_allRegion=0;int tariff_130_sum_allRegion=0;
-            int tariff_220_sum_allRegion=0;int tariff_260_sum_allRegion=0;
-            int tariff_310_sum_allRegion=0;int tariff_270_sum_allRegion=0;
-            int tariff_total_region=0;
+            System.out.println("WITHOUT DUBLICATES SERVICES");
+            for (int i=0; i< servicesWithoutDublicates.size(); i++){
+                int numb=i+1;
+                //System.out.println("numb "+numb+ " MFC "+servicesWithoutDublicates.get(i));
+            }*/
+            //
+
+            ArrayList<PaymentsAllModel> paymentsAllList= new ArrayList<PaymentsAllModel>();
+            ArrayList<ServiceMfcModel> serviceMfcList = new ArrayList<ServiceMfcModel>();
             for (int name_mfc=0; name_mfc<mfcWithoutDublicates.size();name_mfc++ ){
                 int Sum_tariff_mfc=0;
                 ObservableList<PaymentsModelInput> data = FXCollections.observableArrayList(paymentsListInputNameMFCAndTarriff);
                 FilteredList<PaymentsModelInput> filteredData = new FilteredList<>(data, e -> true);
                 int finalName_mfc = name_mfc;
                 filteredData.setPredicate((Predicate<? super PaymentsModelInput>) paymentsModelInput->{
-                    String lowerCaseFilter = mfcWithoutDublicates.get(finalName_mfc);
-                    lowerCaseFilter=lowerCaseFilter.toLowerCase();
+                    String lowerCaseFilter = mfcWithoutDublicates.get(finalName_mfc).toLowerCase();
                     // Сравниваем обращения с фильтром
                     if (paymentsModelInput.getName_mfc().toLowerCase().contains(lowerCaseFilter)){
                         return true;
                     }
                     return false;
                 });
-                SortedList<PaymentsModelInput> sortedData = new SortedList<>(filteredData);
-
+                SortedList<PaymentsModelInput> sortedDataByMfc = new SortedList<>(filteredData);
+                ArrayList<PaymentsModelInput> sortedDataByMfcLIST = new ArrayList<>(sortedDataByMfc);
                 System.out.println("SORTED DATA!!! \n");
-                int tariff_70_sum=0;int tariff_110_sum=0;int tariff_130_sum=0;
-                int tariff_220_sum=0;int tariff_260_sum=0;
-                int tariff_310_sum=0;int tariff_270_sum=0;
-                int tariff_other=0;
-                String other_fio=""; String commentary="";
+                for (int name_serv=0; name_serv<servicesWithoutDublicates.size(); name_serv++){
+                    ObservableList<PaymentsModelInput> dataServices = FXCollections.observableArrayList(sortedDataByMfcLIST);
+                    FilteredList<PaymentsModelInput> filteredDataByMFCServices = new FilteredList<>(dataServices, e -> true);
+                    int final_Services = name_serv;
+                    int finalName_serv = name_serv;
+                    filteredDataByMFCServices.setPredicate((Predicate<? super PaymentsModelInput>) paymentsModelInput->{
+                        String lowerCaseFilterServ = servicesWithoutDublicates.get(final_Services).toLowerCase();
 
-                for (int i=0; i<sortedData.size(); i++){
-                    int numb=i+1;
-                    Sum_tariff_mfc+= sortedData.get(i).getTarriff();
-                    System.out.println("numb "+numb+ " Sorted "+ sortedData.get(i).getTarriff()+" "+sortedData.get(i).getName_mfc());
+                        // Сравниваем обращения с фильтром
+                        if (paymentsModelInput.getService_mfc().toLowerCase().contains(lowerCaseFilterServ)){
+                            return true;
+                        }
+                        return false;
+                    });
+                    SortedList<PaymentsModelInput> sortedListMFCServices = new SortedList<>(filteredDataByMFCServices);
 
-                    switch ((int) sortedData.get(i).getTarriff()){
-                        case 70:
-                            tariff_70_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        case 110:
-                            tariff_110_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        case 130:
-                            tariff_130_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        case 220:
-                            tariff_220_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        case 260:
-                            tariff_260_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        case 310:
-                            tariff_310_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        case 270:
-                            tariff_270_sum+=sortedData.get(i).getTarriff();
-                            break;
-                        default:
-                            tariff_other=(int)sortedData.get(i).getTarriff();
-                            commentary+=tariff_other+" "+sortedData.get(i).getFio_applicant()+"; \n";
-                            break;
+                    if (sortedListMFCServices.size()!=0){
+                        double sum_Serv=0;
 
+                        for (PaymentsModelInput sortedListMFCService : sortedListMFCServices) {
+                            double sumTarif_serv=0;
+                            System.out.println("Tariff: " + sortedListMFCService.getTarriff() + " Mfc: " + sortedListMFCService.getName_mfc() +
+                                    " Name Service: " + sortedListMFCService.getService_mfc());
+                            sumTarif_serv=sortedListMFCService.getTarriff();
+                            paymentsAllList.add(new PaymentsAllModel(0,sortedListMFCService.getTarriff(),sortedListMFCService.getName_mfc(), "",
+                                    "",sortedListMFCService.getService_mfc(), sumTarif_serv));
+                            sum_Serv+=sortedListMFCService.getTarriff();
+                        }
+                        ArrayList<PaymentsAllModel> paymentsOneMFCList= new ArrayList<PaymentsAllModel>();
+                        paymentsOneMFCList=paymentsAllList;
+
+                        serviceMfcList.add(new ServiceMfcModel(0,paymentsOneMFCList, sum_Serv));
+                        paymentsAllList= new ArrayList<PaymentsAllModel>();
                     }
 
+
                 }
-                tariff_70_sum_allRegion+=tariff_70_sum; tariff_110_sum_allRegion+=tariff_110_sum; tariff_130_sum_allRegion+=tariff_130_sum;
-                tariff_220_sum_allRegion+=tariff_220_sum;tariff_260_sum_allRegion+=tariff_260_sum;
-                tariff_310_sum_allRegion+=tariff_310_sum; tariff_270_sum_allRegion+=tariff_270_sum;
-                tariff_total_region+=Sum_tariff_mfc;
-
-                String tariff_70_sum_str="";String tariff_110_sum_str="";String tariff_130_sum_str="";
-                String tariff_220_sum_str="";String tariff_260_sum_str="";
-                String tariff_310_sum_str="";String tariff_270_sum_str="";
-                String tariff_other_sum_str="";
-                String Sum_tariff_mfc_str= String.valueOf(Sum_tariff_mfc);
-                if (tariff_70_sum!=0) tariff_70_sum_str= String.valueOf(tariff_70_sum);
-                if (tariff_110_sum!=0) tariff_110_sum_str=String.valueOf(tariff_110_sum);
-                if (tariff_130_sum!=0) tariff_130_sum_str=String.valueOf(tariff_130_sum);
-                if (tariff_220_sum!=0) tariff_220_sum_str=String.valueOf(tariff_220_sum);
-                if (tariff_260_sum!=0) tariff_260_sum_str=String.valueOf(tariff_260_sum);
-                if (tariff_310_sum!=0) tariff_310_sum_str=String.valueOf(tariff_310_sum);
-                if (tariff_270_sum!=0) tariff_270_sum_str=String.valueOf(tariff_270_sum);
-                //if (tariff_other_sum!=0) tariff_other_sum_str=String.valueOf(tariff_other_sum);
-
-                int name_mfc_rep=name_mfc+1;
-                paymentsList.add(new PaymentsModel(name_mfc_rep,mfcWithoutDublicates.get(finalName_mfc), "",commentary,
-                        "", tariff_70_sum_str, tariff_110_sum_str, tariff_130_sum_str, tariff_220_sum_str,
-                        tariff_260_sum_str, tariff_310_sum_str, tariff_270_sum_str, Sum_tariff_mfc_str));
-                System.out.println("SUM MFC: "+Sum_tariff_mfc);
-
             }
 
-            for (PaymentsModel paymentsModel : paymentsList) {
-                System.out.println(paymentsModel.getNumber_list() + " " + paymentsModel.getName_mfc()+ " "+  paymentsModel.getTariff_70_sum()+" "+
-                        paymentsModel.getTariff_110_sum()+ " "+ paymentsModel.getTariff_130_sum()+" "+ paymentsModel.getTariff_220_sum()+" "
-                        +paymentsModel.getTariff_260_sum()+" "+ paymentsModel.getTariff_310_sum()+" "+ paymentsModel.getTariff_270_sum()+
-                        " " +paymentsModel.getTotal_sum());
+
+            for (int i=0; i<mfcWithoutDublicates.size(); i++){
+                double total_sum_services_city=0;
+                for (int j=0; j<serviceMfcList.size(); j++){
+                    if (serviceMfcList.get(j).getListService().get(0).getName_mfc().equals(mfcWithoutDublicates.get(i))){
+                        double serveOne_Sum=0;
+                        for (int smfcLi=0; smfcLi<serviceMfcList.get(j).getListService().size(); smfcLi++) {
+                            serveOne_Sum+= serviceMfcList.get(j).getListService().get(smfcLi).getTarriff();
+                        }
+                        itogService.add(new ServiceItogModel(serviceMfcList.get(j).getListService().get(0).getServiceName(), serviceMfcList.get(j).getListService(),serveOne_Sum));
+                        total_sum_services_city+=serviceMfcList.get(j).getSumServices();
+                    }
+                }
+                itogPayments.add(new PaymentsItogModel(0,0,mfcWithoutDublicates.get(i),"","",
+                        itogService, total_sum_services_city));
+                itogService= new ArrayList<ServiceItogModel>();
+
+
             }
+            System.out.println(paymentsAllList.size());
+            System.out.println(serviceMfcList.size());
+            System.out.println(itogPayments.size());
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!");
+            for (int i=0; i<itogPayments.size(); i++){
+                for (int j=0; j<itogPayments.get(i).getServiceList().size(); j++){
+                    System.out.println("MFC: "+itogPayments.get(i).getName_mfc() +" Service: "+itogPayments.get(i).getServiceList().get(j).getServiceName() +
+                            " Service sum: "+itogPayments.get(i).getServiceList().get(j).getServiceSum());
+                }
 
-            // Itog
-            paymentsList.add(new PaymentsModel(0,"ИТОГО:", "","",
-                    "", String.valueOf(tariff_70_sum_allRegion), String.valueOf(tariff_110_sum_allRegion),
-                    String.valueOf(tariff_130_sum_allRegion), String.valueOf(tariff_220_sum_allRegion),
-                    String.valueOf(tariff_260_sum_allRegion), String.valueOf(tariff_310_sum_allRegion),
-                    String.valueOf(tariff_270_sum_allRegion), String.valueOf(tariff_total_region)));
-
-
+            }
         }
-        ArrayList<PaymentsModel> paymentsListFinal= new ArrayList<>(paymentsList) ;
-        return paymentsListFinal;
+
+
+        return itogPayments;
     }
 
-    public void SaveReportToFile(ArrayList<PaymentsModel> listPayment) throws IOException {
+    public void SaveReportToFile(ArrayList<PaymentsItogModel> listPayment) throws IOException {
         //System.out.println(text_test);
         // Создаем экземпляр класса FileChooser
         FileChooser fileChooser = new FileChooser();
@@ -381,7 +364,7 @@ public class PaymentsController {
                     okButton.setVisible(false);
                     cancelButton.setVisible(false);
 
-                    Task DownloadTaskExcel =  new DownloadTaskExcel (listPayment, file);
+                    Task DownloadTaskExcel =  new DownloadTaskExcel(listPayment, file);
 
                     //  После выполнения потока
                     DownloadTaskExcel.setOnSucceeded(new EventHandler<WorkerStateEvent>() {
@@ -466,7 +449,7 @@ public class PaymentsController {
     }
 
     // Функция сохранения файла в Excel
-    public static ArrayList<String> SaveFileExcel(ArrayList<PaymentsModel> dataReportList, File file) throws IOException {
+    public static ArrayList<String> SaveFileExcel(ArrayList<PaymentsItogModel> dataReportList, File file) throws IOException {
         // Создание книги Excel
         XSSFWorkbook workbook = new XSSFWorkbook();
         // Создание листа
@@ -481,6 +464,28 @@ public class PaymentsController {
         XSSFCellStyle styleTotalSum = createStyleForTotalSum(workbook);
         row = sheet.createRow(rownum);
 
+
+        ArrayList<String> mfcSwithDublicates= new ArrayList<String>();
+        ArrayList<String> mfcWithoutDublicates= new ArrayList<String>();
+        ArrayList<String> servicesWithDublicates=new ArrayList<String>();
+        ArrayList<String> servicesWithoutDublicates=new ArrayList<String>();
+
+        for (int i=0; i<dataReportList.size(); i++){
+            for (int j=0; j<dataReportList.get(i).getServiceList().size(); j++){
+                System.out.println("MFC: "+dataReportList.get(i).getName_mfc() +" Service: "+dataReportList.get(i).getServiceList().get(j).getServiceName() +
+                        " Service sum: "+dataReportList.get(i).getServiceList().get(j).getServiceSum());
+                mfcSwithDublicates.add(dataReportList.get(i).getName_mfc());
+                servicesWithDublicates.add(dataReportList.get(i).getServiceList().get(j).getServiceName());
+            }
+        }
+
+        Set<String> setMfc = new HashSet<>(mfcSwithDublicates);
+        mfcWithoutDublicates.addAll(setMfc);
+        Set<String> setServices = new HashSet<>(servicesWithDublicates);
+        servicesWithoutDublicates.addAll(setServices);
+
+        System.out.println(mfcWithoutDublicates.size()+" "+servicesWithoutDublicates.size());
+
         // Создание столбца "Название организации"
         cell = row.createCell(0, CellType.STRING);
         cell.setCellValue("№ п/п");
@@ -489,49 +494,77 @@ public class PaymentsController {
         cell = row.createCell(1, CellType.STRING);
         cell.setCellValue("Отделы \"Мои документы\" по территории");
         cell.setCellStyle(style);
-        // Создание столбца "Номер обращения"
+
         cell = row.createCell(2, CellType.STRING);
         cell.setCellValue("Комментарий к уточнению");
         cell.setCellStyle(style);
-        // Создание столбца "Наименование обращения"
+
+
         cell = row.createCell(3, CellType.STRING);
         cell.setCellValue("Уточнение платежа");
         cell.setCellStyle(style);
-        // Создание столбца "Дата создания"
-        cell = row.createCell(4, CellType.STRING);
-        cell.setCellValue("70");
-        cell.setCellStyle(style);
-        // Создание столбца "Дата окончания"
-        cell = row.createCell(5, CellType.STRING);
-        cell.setCellValue("110");
-        cell.setCellStyle(style);
-        // Создание столбца "Статус"
-        cell = row.createCell(6, CellType.STRING);
-        cell.setCellValue("130");
-        cell.setCellStyle(style);
-        // Создание столбца "Текущий шаг"
-        cell = row.createCell(7, CellType.STRING);
-        cell.setCellValue("220");
-        cell.setCellStyle(style);
-        // Создание столбца "Заявители"
-        cell = row.createCell(8, CellType.STRING);
-        cell.setCellValue("260");
-        cell.setCellStyle(style);
 
-        cell = row.createCell(9, CellType.STRING);
-        cell.setCellValue("310");
-        cell.setCellStyle(style);
 
-        cell = row.createCell(10, CellType.STRING);
-        cell.setCellValue("270");
-        cell.setCellStyle(style);
+        int countServ=servicesWithoutDublicates.size();
+        for (int k=0;k<=servicesWithoutDublicates.size(); k++){
+            if (k==countServ){
+                cell = row.createCell(countServ+4, CellType.STRING);
+                cell.setCellValue("ИТОГО");
+                cell.setCellStyle(style);
+            } else {
+                cell = row.createCell(k+4, CellType.STRING);
+                cell.setCellValue(servicesWithoutDublicates.get(k));
+                cell.setCellStyle(style);
+            }
+        }
 
-        cell = row.createCell(11, CellType.STRING);
-        cell.setCellValue("ИТОГО");
-        cell.setCellStyle(style);
 
-        // Перебор по данным
-        for (PaymentsModel reportModel : dataReportList) {
+        for (int mfcName=0; mfcName<mfcWithoutDublicates.size(); mfcName++){
+            rownum++;
+            row = sheet.createRow(rownum);
+            // Запись данных в отчёт
+            cell = row.createCell(0, CellType.STRING);
+            cell.setCellValue(0);
+            cell.setCellStyle(styleCells);
+
+            // Запись данных в отчёт
+            cell = row.createCell(1, CellType.STRING);
+            cell.setCellValue(dataReportList.get(mfcName).getName_mfc());
+            cell.setCellStyle(styleCells);
+
+            // Запись данных в отчёт
+            cell = row.createCell(2, CellType.STRING);
+            cell.setCellValue("");
+            cell.setCellStyle(styleCells);
+
+            // Запись данных в отчёт
+            cell = row.createCell(3, CellType.STRING);
+            cell.setCellValue("");
+            cell.setCellStyle(styleCells);
+
+            for (int k=0;k<=servicesWithoutDublicates.size(); k++){
+                if (k==countServ){
+                    cell = row.createCell(countServ+4, CellType.STRING);
+                    cell.setCellValue(dataReportList.get(mfcName).getTotal_sum());
+                    cell.setCellStyle(styleCells);
+                } else {
+                    cell = row.createCell(k+4, CellType.STRING);
+                    for (int sL=0; sL<dataReportList.get(mfcName).getServiceList().size();sL++){
+                        if (servicesWithoutDublicates.get(k).equals(dataReportList.get(mfcName).getServiceList().get(sL).getServiceName())){
+                            cell.setCellValue(dataReportList.get(mfcName).getServiceList().get(sL).getServiceSum());
+                            cell.setCellStyle(styleCells);
+                        }
+
+                    }
+
+                }
+            }
+
+
+        }
+
+        /*// Перебор по данным
+        for (PaymentsItogModel reportModel : dataReportList) {
             //System.out.println(mfc_model.getIdMfc() +"\t" +mfc_model.getNameMfc());
             rownum++;
             row = sheet.createRow(rownum);
@@ -636,7 +669,7 @@ public class PaymentsController {
                 cell.setCellStyle(styleTotalSum);
             }
 
-        }
+        }*/
         // Выравнивание столбцов по ширине
         autoSizeColumns(workbook);
         // Создания потока сохранения файла
@@ -650,6 +683,7 @@ public class PaymentsController {
         ArrayList<String> pathFileAndDir=new ArrayList<String>();
         pathFileAndDir.add(file.getParent());
         pathFileAndDir.add(file.getAbsolutePath());
+
 
         return pathFileAndDir; // Возвращение пути и абсолютного пути файла
 
@@ -755,6 +789,4 @@ public class PaymentsController {
         }
         return lastPathToFile;
     }
-
-
 }

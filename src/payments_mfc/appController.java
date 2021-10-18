@@ -32,7 +32,9 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 
+import payments_mfc.controller.PaymentsAllController;
 import payments_mfc.controller.PaymentsController;
+import payments_mfc.model.PaymentsItogModel;
 import payments_mfc.model.PaymentsModel;
 
 import java.io.File;
@@ -129,10 +131,10 @@ public class appController {
     private TableColumn<PaymentsModel, String> total_sum_col;
 
     @FXML
-    private StackPane root_org_report;
+    private StackPane root_all_report;
 
     @FXML
-    private VBox vbox_rep_org_main;
+    private VBox vbox_rep_all_main;
 
     @FXML
     private DatePicker date_start_org_d;
@@ -141,10 +143,10 @@ public class appController {
     private DatePicker date_finish_org_d;
 
     @FXML
-    private Button generate_report_org_b;
+    private Button choose_file_all_b;
 
     @FXML
-    private Button download_report_org_b;
+    private Button download_report_all_b;
 
     @FXML
     private HBox vbox_org_filter;
@@ -197,6 +199,12 @@ public class appController {
         download_report_b.setOnMouseEntered(event_mouse -> {
             ((Node) event_mouse.getSource()).setCursor(Cursor.HAND);
         });
+        choose_file_all_b.setOnMouseEntered(event_mouse -> {
+            ((Node) event_mouse.getSource()).setCursor(Cursor.HAND);
+        });
+        download_report_all_b.setOnMouseEntered(event_mouse -> {
+            ((Node) event_mouse.getSource()).setCursor(Cursor.HAND);
+        });
         Label label_onStart=new Label();
         label_onStart.setText("Выберите файл с платежами, чтобы составить отчёт.");
         label_onStart.setFont(Font.font("verdana", FontWeight.BOLD, FontPosture.REGULAR, 15));
@@ -232,8 +240,38 @@ public class appController {
             }
         });
 
-    }
+        choose_file_all_b.setOnAction(event -> {
+            FXMLLoader loader = new FXMLLoader();
+            loader.setLocation(getClass().getResource("/payments_mfc/view/app.fxml"));
+            try {
+                loader.load();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Parent root = loader.getRoot();
+            appController AppController = loader.getController();
+            Stage stage = new Stage();
+            FileChooser fileChooser = new FileChooser();//Класс работы с диалогом выборки и сохранения
+            PaymentsAllController paymentsAllController = new PaymentsAllController();
+            String lastPathDirectory= paymentsAllController.getLastDirectory();
+            if (!lastPathDirectory.equals("")){
+                fileChooser.setInitialDirectory(new File(lastPathDirectory));
+            }
+            fileChooser.setTitle("Выберите файл с отчётом по платежам (все)");//Заголовок диалога
+            FileChooser.ExtensionFilter extFilter =
+                    new FileChooser.ExtensionFilter("Excel file (*.xlsx)", "*.xlsx");//Расширение
+            fileChooser.getExtensionFilters().add(extFilter);
+            File file = fileChooser.showOpenDialog(stage);//Указываем текущую сцену CodeNote.mainStage
+            paymentsAllController.checkDirectory(file.getParent());
+            try {
+                openCompareReportAllPayments(file);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
+        });
+
+    }
 
     public void openCompareReport(File file) throws IOException {
 
@@ -243,7 +281,6 @@ public class appController {
         root_report.getChildren().add(box);
         vbox_rep_main.setDisable(true);
         data_rep_table.setDisable(true);
-
 
         // Запустить поток для получения отчёта с сервера
         Task ReportPaymentsTask = new PaymentsController.ReportPayments(file);
@@ -315,6 +352,49 @@ public class appController {
         Thread reportThread = new Thread(ReportPaymentsTask);
         reportThread.setDaemon(true);
         reportThread.start();
+
+    }
+
+    public void openCompareReportAllPayments(File file) throws IOException {
+
+        ProgressIndicator pi = new ProgressIndicator(); // Запуск прогресс индикатора
+        VBox box = new VBox(pi);
+        box.setAlignment(Pos.CENTER);
+        root_all_report.getChildren().add(box);
+        vbox_rep_all_main.setDisable(true);
+
+
+        // Запустить поток для получения отчёта с сервера
+        Task ReportAllPaymentsTask = new PaymentsAllController.ReportPaymentsAll(file);
+
+        //  После выполнения потока
+        ReportAllPaymentsTask.setOnSucceeded(new EventHandler<WorkerStateEvent>() {
+            @Override
+            public void handle(WorkerStateEvent event) {
+                box.setDisable(true);
+                pi.setVisible(false);
+                vbox_rep_all_main.setDisable(false);
+
+                // Получение данных с распарсенного поля
+                ArrayList<PaymentsItogModel> paymentsList= (ArrayList<PaymentsItogModel>) ReportAllPaymentsTask.getValue();
+
+
+                download_report_all_b.setDisable(false);
+
+                download_report_all_b.setOnAction(eventDownload -> {
+                    try {
+                        PaymentsAllController paymentsAllController=new PaymentsAllController();
+                        paymentsAllController.SaveReportToFile(paymentsList);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        });
+        // Запуск потока
+        Thread reportAllThread = new Thread(ReportAllPaymentsTask);
+        reportAllThread.setDaemon(true);
+        reportAllThread.start();
 
     }
 
